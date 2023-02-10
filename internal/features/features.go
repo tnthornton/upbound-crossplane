@@ -37,6 +37,10 @@ const (
 
 	// EnableAlphaSignatureVerification enables alpha support for verifying the package signatures via ImageConfig API.
 	EnableAlphaSignatureVerification feature.Flag = "EnableAlphaSignatureVerification"
+
+	// EnableProviderIdentity enables alpha support for Provider identity. This
+	// feature is only available when running on Upbound.
+	EnableProviderIdentity feature.Flag = "EnableProviderIdentity"
 )
 
 // Beta Feature Flags.

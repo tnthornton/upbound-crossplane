@@ -138,6 +138,11 @@ type startCommand struct {
 	// explicit and informative error on startup, instead of a potentially
 	// surprising one later.
 	EnableEnvironmentConfigs bool `hidden:""`
+	// NOTE(hasheddan): this feature is unlikely to graduate from alpha status
+	// and should be removed when a runtime interface is introduced upstream.
+	// See https://github.com/crossplane/crossplane/issues/2671 for more
+	// information.
+	EnableProviderIdentity bool `group:"Alpha Features:" help:"Enable support for Provider identity."`
 }
 
 // Run core Crossplane controllers.
@@ -305,6 +310,11 @@ func (c *startCommand) Run(s *runtime.Scheme, log logging.Logger) error { //noli
 	if c.EnableSignatureVerification {
 		o.Features.Enable(features.EnableAlphaSignatureVerification)
 		log.Info("Alpha feature enabled", "flag", features.EnableAlphaSignatureVerification)
+	}
+
+	if c.EnableProviderIdentity {
+		o.Features.Enable(features.EnableProviderIdentity)
+		log.Info("Alpha feature enabled", "flag", features.EnableProviderIdentity)
 	}
 
 	// Claim and XR controllers are started and stopped dynamically by the
