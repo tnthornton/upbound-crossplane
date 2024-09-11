@@ -20,6 +20,7 @@ env:
   # credentials have been provided before trying to run steps that need them.
   DOCKER_USR: ${{ secrets.DOCKER_USR }}
   UPBOUND_MARKETPLACE_PUSH_ROBOT_USR: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
+  XPKG_ACCESS_ID: ${{ secrets.XPKG_ACCESS_ID }}
 
 jobs:
   check-diff:
@@ -42,7 +43,23 @@ jobs:
           username: ${{ secrets.DOCKER_USR }}
           password: ${{ secrets.DOCKER_PSW }}
 
-      - name: Publish Artifacts to Docker Hub
+      - name: Login to Upbound
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3
+        if: env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
+        with:
+          registry: xpkg.upbound.io/upbound
+          username: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR }}
+          password: ${{ secrets.UPBOUND_MARKETPLACE_PUSH_ROBOT_PSW }}
+
+      - name: Login to Spaces Artifacts Registry
+        uses: docker/login-action@343f7c4344506bcbf9b4de18042ae17996df046d # v3
+        if: env.XPKG_ACCESS_ID != ''
+        with:
+          registry: xpkg.upbound.io/spaces-artifacts
+          username: ${{ secrets.XPKG_ACCESS_ID }}
+          password: ${{ secrets.XPKG_TOKEN }}
+
+      - name: Publish Artifacts to Marketplace, DockerHub
         run: make -j2 publish BRANCH_NAME=${GITHUB_REF##*/}
 
       - name: Promote Artifacts in Docker Hub
@@ -51,3 +68,74 @@ jobs:
         env:
           BRANCH_NAME: master
           CHANNEL: master
+
+  fuzz-test:
+    runs-on: ubuntu-22.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+
+    steps:
+      # TODO(negz): Can we make this use our Go build and dependency cache? It
+      # seems to build Crossplane inside of a Docker image.
+      - name: Build Fuzzers
+        id: build
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
+        with:
+          oss-fuzz-project-name: "crossplane"
+          language: go
+
+      - name: Run Fuzzers
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+        with:
+          oss-fuzz-project-name: "crossplane"
+          fuzz-seconds: 300
+          language: go
+
+      - name: Upload Crash
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4
+        if: failure() && steps.build.outcome == 'success'
+        with:
+          name: artifacts
+          path: ./out/artifacts
+
+  # TODO(negz): Refactor this job. Should the parts pertaining to release
+  # branches live in promote.yaml instead?
+  protobuf-schemas:
+    runs-on: ubuntu-22.04
+    needs: detect-noop
+    if: needs.detect-noop.outputs.noop != 'true'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+
+      - name: Setup Buf
+        uses: bufbuild/buf-setup-action@v1
+
+      - name: Lint Protocol Buffers
+        uses: bufbuild/buf-lint-action@v1
+        with:
+          input: apis
+
+      - name: Detect Breaking Changes in Protocol Buffers (Master Branch)
+        uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01 # v1
+        # We want to run this for the master branch, and PRs.
+        if: ${{ ! startsWith(github.ref, 'refs/heads/release-') }}
+        with:
+          input: apis
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=master,subdir=apis"
+
+      - name: Detect Breaking Changes in Protocol Buffers (Release Branch)
+        uses: bufbuild/buf-breaking-action@a074e988ee34efcd4927079e79c611f428354c01 # v1
+        # We want to run this only on release branches.
+        if: ${{ startsWith(github.ref, 'refs/heads/release-') }}
+        with:
+          input: apis
+          against: "https://github.com/${GITHUB_REPOSITORY}.git#branch=${GITHUB_REF_NAME},subdir=apis"
+
+      - name: Push Protocol Buffers to Buf Schema Registry
+        if: ${{ github.repository == 'crossplane/crossplane' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/release-')) }}
+        uses: bufbuild/buf-push-action@v1
+        with:
+          input: apis
+          buf_token: ${{ secrets.BUF_TOKEN }}
