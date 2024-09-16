@@ -74,13 +74,21 @@ jobs:
         env:
           REGISTRY_ORGS: xpkg.upbound.io/spaces-artifacts
 
-      - name: Promote Artifacts in Spaces Artifacts Registry
-        if: github.ref == 'refs/heads/main' && env.DOCKER_USR != ''
-        run: make -j2 promote
-        env:
-          REGISTRY_ORGS: xpkg.upbound.io/spaces-artifacts
-          BRANCH_NAME: main
-          CHANNEL: main
+      - name: Configure Earthly to Push Artifacts
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')) && env.DOCKER_USR != '' && env.UPBOUND_MARKETPLACE_PUSH_ROBOT_USR != ''
+        run: echo "EARTHLY_PUSH=true" >> $GITHUB_ENV
+
+      - name: Set CROSSPLANE_VERSION and CROSSPLANE_INTERNAL_VERSION GitHub Environment Variables
+        run: earthly +ci-version
+
+      - name: Build and Push Artifacts
+        run: earthly --strict --remote-cache ghcr.io/upbound/crossplane-earthly-cache:${{ github.job }} +ci-artifacts --CROSSPLANE_VERSION=${CROSSPLANE_VERSION} --CROSSPLANE_INTERNAL_VERSION=${CROSSPLANE_INTERNAL_VERSION}
+
+      - name: Upload Artifacts to GitHub
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: output
+          path: _output/**
 
   fuzz-test:
     runs-on: ubuntu-22.04
