@@ -322,11 +322,7 @@ func SetupProviderRevision(mgr ctrl.Manager, o controller.Options) error {
 	ro := []ReconcilerOption{
 		WithCache(o.Cache),
 		WithDependencyManager(NewPackageDependencyManager(mgr.GetClient(), dag.NewMapDag, v1.ProviderGroupVersionKind)),
-		WithHooks(NewProviderHooks(resource.ClientApplicator{
-			Client:     mgr.GetClient(),
-			Applicator: resource.NewAPIPatchingApplicator(mgr.GetClient()),
-		}, o.Namespace, o.ServiceAccount)),
-		WithEstablisher(NewAPIEstablisher(mgr.GetClient(), o.Namespace)),
+		WithEstablisher(NewAPIEstablisher(mgr.GetClient(), o.Namespace, o.MaxConcurrentPackageEstablishers)),
 		WithNewPackageRevisionFn(nr),
 		WithParser(parser.New(metaScheme, objScheme)),
 		WithParserBackend(NewImageBackend(fetcher, WithDefaultRegistry(o.DefaultRegistry))),

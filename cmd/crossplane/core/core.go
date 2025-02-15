@@ -110,14 +110,11 @@ type startCommand struct {
 	MetricsPort     int `default:"8080" env:"METRICS_PORT"      help:"The port the metrics server listens on."`
 	HealthProbePort int `default:"8081" env:"HEALTH_PROBE_PORT" help:"The port the health probe endpoint listens on."`
 
-	TLSServerSecretName        string `env:"TLS_SERVER_SECRET_NAME" help:"The name of the TLS Secret that will store Crossplane's server certificate."`
-	TLSServerCertsDir          string `env:"TLS_SERVER_CERTS_DIR"   help:"The path of the folder which will store TLS server certificate of Crossplane."`
-	TLSClientSecretName        string `env:"TLS_CLIENT_SECRET_NAME" help:"The name of the TLS Secret that will be store Crossplane's client certificate."`
-	TLSClientCertsDir          string `env:"TLS_CLIENT_CERTS_DIR"   help:"The path of the folder which will store TLS client certificate of Crossplane."`
-	EnableEnvironmentConfigs   bool   `group:"Alpha Features:" help:"Enable support for EnvironmentConfigs."`
-	EnableExternalSecretStores bool   `group:"Alpha Features:" help:"Enable support for External Secret Stores."`
-	EnableUsages               bool   `group:"Alpha Features:" help:"Enable support for deletion ordering and resource protection with Usages."`
-	EnableRealtimeCompositions bool   `group:"Alpha Features:" help:"Enable support for realtime compositions, i.e. watching composed resources and reconciling compositions immediately when any of the composed resources is updated."`
+	TLSServerSecretName      string `env:"TLS_SERVER_SECRET_NAME" help:"The name of the TLS Secret that will store Crossplane's server certificate."`
+	TLSServerCertsDir        string `env:"TLS_SERVER_CERTS_DIR"   help:"The path of the folder which will store TLS server certificate of Crossplane."`
+	TLSClientSecretName      string `env:"TLS_CLIENT_SECRET_NAME" help:"The name of the TLS Secret that will be store Crossplane's client certificate."`
+	TLSClientCertsDir        string `env:"TLS_CLIENT_CERTS_DIR"   help:"The path of the folder which will store TLS client certificate of Crossplane."`
+	EnableEnvironmentConfigs bool   `group:"Alpha Features:" help:"Enable support for EnvironmentConfigs."`
 	// NOTE(hasheddan): this feature is unlikely to graduate from alpha status
 	// and should be removed when a runtime interface is introduced upstream.
 	// See https://github.com/crossplane/crossplane/issues/2671 for more
